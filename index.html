@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ar">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Icons → Google Sheet counter</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;padding:24px;background:#f7f8fb}
+    h1{direction:rtl;text-align:center;margin-bottom:12px}
+    .icons{display:flex;gap:18px;justify-content:center;align-items:center;flex-wrap:wrap}
+    .icon-btn{
+      width:96px;height:96px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:white;box-shadow:0 6px 18px rgba(20,30,60,0.08);cursor:pointer;user-select:none;border:1px solid #e6e9f2;
+      transition:transform .12s ease,box-shadow .12s ease;
+    }
+    .icon-btn:active{transform:translateY(2px);box-shadow:0 3px 10px rgba(20,30,60,0.06)}
+    .icon-emoji{font-size:34px}
+    .icon-label{margin-top:8px;font-size:14px}
+    .counter{margin-top:18px;text-align:center;font-size:18px}
+    .status{margin-top:8px;text-align:center;color:#555}
+  </style>
+</head>
+<body>
+  <h1>اضغط على أي أيقونة لزيادة القيمة في Google Sheet</h1>
+
+  <div class="icons" aria-hidden="false">
+    <div class="icon-btn" data-icon="star" title="Star">
+      <div class="icon-emoji">⭐</div>
+      <div class="icon-label">Star</div>
+      <div class="counter" id="count-star">—</div>
+    </div>
+
+    <div class="icon-btn" data-icon="heart" title="Heart">
+      <div class="icon-emoji">❤️</div>
+      <div class="icon-label">Heart</div>
+      <div class="counter" id="count-heart">—</div>
+    </div>
+
+    <div class="icon-btn" data-icon="thumb" title="Thumb">
+      <div class="icon-emoji">👍</div>
+      <div class="icon-label">Thumb</div>
+      <div class="counter" id="count-thumb">—</div>
+    </div>
+  </div>
+
+  <div class="status" id="status">الحالة: جاهز</div>
+
+  <script>
+    // ضع هنا رابط Web App الذي حصلت عليه من Google Apps Script
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbweZzyOmGIcn9hZB0qqeIwvh13SvW_aej1W3OWA4_rP3LXkvYoADKfei-5GzH430QmA5g/exec";
+    // (اختياري) سر بسيط لو فعلت التحقق في السكربت
+    const SECRET = "123";
+
+    const statusEl = document.getElementById('status');
+
+    // عندما تكون الصفحة جاهزة، يمكنك جلب القيم الحالية من الـ sheet
+    // هنا نفترض أنك لا تريد استدعاء API إضافي؛ سنعرض '-' حتى نقوم بزيادة أول مرة.
+    // إذا أردت قراءة القيم الأولية — يمكنك تنفيذ endpoint آخر في Apps Script يعيد MAP القيم.
+
+    document.querySelectorAll('.icon-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const icon = btn.getAttribute('data-icon');
+        updateStatus("جارٍ الإرسال...");
+        try {
+          const resp = await fetch(WEB_APP_URL, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ icon: icon, secret: SECRET })
+          });
+
+          // قراءة JSON من الاستجابة
+          const json = await resp.json();
+          if (json.status === "ok") {
+            // حدّث العداد المحلي
+            const counterEl = document.getElementById('count-' + icon);
+            counterEl.textContent = json.newValue;
+            updateStatus("تمت الزيادة بنجاح");
+          } else {
+            updateStatus("خطأ: " + (json.message || "unknown"));
+            console.error("server error", json);
+          }
+        } catch (err) {
+          updateStatus("فشل الاتصال: " + err.message);
+          console.error(err);
+        }
+      });
+    });
+
+    function updateStatus(t){
+      statusEl.textContent = "الحالة: " + t;
+    }
+  </script>
+</body>
+</html>
